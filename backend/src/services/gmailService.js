@@ -693,10 +693,10 @@ const gmailService = {
 
         const gmail = await this.getGmailClient();
 
-        // Search for unread emails with [RFP-*] in subject
+        // Search for unread emails with [RFP-*] in subject (exact bracket match)
         const response = await gmail.users.messages.list({
             userId: 'me',
-            q: 'is:unread subject:[RFP-',
+            q: 'is:unread subject:"[RFP-"',
             maxResults: 10,
         });
 
@@ -708,21 +708,6 @@ const gmailService = {
 
         for (const message of response.data.messages) {
             try {
-                // IMMEDIATELY mark as read FIRST to prevent re-polling
-                try {
-                    await gmail.users.messages.modify({
-                        userId: 'me',
-                        id: message.id,
-                        requestBody: {
-                            removeLabelIds: ['UNREAD'],
-                        },
-                    });
-                    console.log(`[Gmail Service] Marked message ${message.id} as READ`);
-                } catch (markError) {
-                    console.error(`[Gmail Service] Failed to mark message ${message.id} as read:`, markError.message);
-                    // Continue processing even if marking fails - we'll catch duplicates in emailPoller
-                }
-
                 const fullMessage = await gmail.users.messages.get({
                     userId: 'me',
                     id: message.id,
@@ -733,11 +718,27 @@ const gmailService = {
                 const subject = headers.find(h => h.name === 'Subject')?.value || '';
                 const from = headers.find(h => h.name === 'From')?.value || '';
 
-                // Extract RFP ID from subject
+                // Extract RFP ID from subject - MUST have [RFP-XX] format
                 const rfpIdMatch = subject.match(/\[RFP-(\d+)\]/);
                 if (!rfpIdMatch) {
-                    console.log(`[Gmail Service] Skipping email - no RFP ID found in subject: ${subject}`);
+                    // NOT a valid RFP email - don't mark as read, leave it unread
+                    console.log(`[Gmail Service] Ignoring non-RFP email (leaving unread): ${subject}`);
                     continue;
+                }
+
+                // Valid RFP email - NOW mark as read to prevent re-polling
+                try {
+                    await gmail.users.messages.modify({
+                        userId: 'me',
+                        id: message.id,
+                        requestBody: {
+                            removeLabelIds: ['UNREAD'],
+                        },
+                    });
+                    console.log(`[Gmail Service] Marked RFP email ${message.id} as READ`);
+                } catch (markError) {
+                    console.error(`[Gmail Service] Failed to mark message ${message.id} as read:`, markError.message);
+                    // Continue processing even if marking fails - we'll catch duplicates in emailPoller
                 }
 
                 const rfpId = parseInt(rfpIdMatch[1]);
