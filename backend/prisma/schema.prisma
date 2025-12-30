@@ -1,0 +1,176 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model UserSettings {
+  id                 Int       @id @default(autoincrement())
+  googleAccessToken  String?   @map("google_access_token") @db.Text
+  googleRefreshToken String?   @map("google_refresh_token") @db.Text
+  googleTokenExpiry  DateTime? @map("google_token_expiry") @db.Timestamptz(6)
+  connectedEmail     String?   @map("connected_email") @db.VarChar(255)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("user_settings")
+}
+
+model Vendor {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(255)
+  email     String   @unique @db.VarChar(255)
+  company   String?  @db.VarChar(255)
+  phone     String?  @db.VarChar(50)
+  category  String?  @db.VarChar(100)
+  address   String?  @db.Text
+  notes     String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  rfpVendors  RfpVendor[]
+  proposals   Proposal[]
+  awardedRfps Rfp[]       @relation("AwardedRfps")
+
+  @@map("vendors")
+}
+
+model Rfp {
+  id              Int       @id @default(autoincrement())
+  title           String    @db.VarChar(255)
+  description     String?   @db.Text
+  rawInput        String    @map("raw_input") @db.Text
+  items           Json      @default("[]") @db.JsonB
+  budget          Decimal?  @db.Decimal(12, 2)
+  currency        String    @default("USD") @db.VarChar(3)
+  deadline        DateTime? @db.Date
+  deliveryDays    Int?      @map("delivery_days")
+  paymentTerms    String?   @map("payment_terms") @db.VarChar(100)
+  warrantyTerms   String?   @map("warranty_terms") @db.VarChar(255)
+  additionalTerms String?   @map("additional_terms") @db.Text
+  status          RfpStatus @default(draft)
+  awardedVendorId Int?      @map("awarded_vendor_id")
+  awardedAt       DateTime? @map("awarded_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  rfpVendors    RfpVendor[]
+  proposals     Proposal[]
+  comparisons   RfpComparison[]
+  awardedVendor Vendor?         @relation("AwardedRfps", fields: [awardedVendorId], references: [id])
+
+  @@map("rfps")
+}
+
+model RfpComparison {
+  id              Int                 @id @default(autoincrement())
+  rfpId           Int                 @map("rfp_id")
+  status          ComparisonStatus    @default(pending)
+  comparisonData  Json?               @map("comparison_data") @db.JsonB
+  proposalCount   Int                 @default(0) @map("proposal_count")
+  error           String?             @db.Text
+  startedAt       DateTime            @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt     DateTime?           @map("completed_at") @db.Timestamptz(6)
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  rfp Rfp @relation(fields: [rfpId], references: [id], onDelete: Cascade)
+
+  @@map("rfp_comparisons")
+}
+
+enum ComparisonStatus {
+  pending
+  processing
+  completed
+  failed
+}
+
+model RfpVendor {
+  id                     Int              @id @default(autoincrement())
+  rfpId                  Int              @map("rfp_id")
+  vendorId               Int              @map("vendor_id")
+  sentAt                 DateTime?        @map("sent_at") @db.Timestamptz(6)
+  emailMessageId         String?          @map("email_message_id") @db.VarChar(255)
+  emailThreadId          String?          @map("email_thread_id") @db.VarChar(255)
+  followUpCount          Int              @default(0) @map("follow_up_count")
+  lastFollowUpAt         DateTime?        @map("last_follow_up_at") @db.Timestamptz(6)
+  lastProcessedMessageId String?          @map("last_processed_message_id") @db.VarChar(255)
+  partialProposalData    Json?            @map("partial_proposal_data") @db.JsonB
+  missingFields          Json?            @map("missing_fields") @db.JsonB
+  status                 RfpVendorStatus  @default(pending)
+  createdAt              DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  rfp    Rfp    @relation(fields: [rfpId], references: [id], onDelete: Cascade)
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([rfpId, vendorId])
+  @@map("rfp_vendors")
+}
+
+model Proposal {
+  id           Int       @id @default(autoincrement())
+  rfpId        Int       @map("rfp_id")
+  vendorId     Int       @map("vendor_id")
+  rawEmail     String    @map("raw_email") @db.Text
+  attachments  Json      @default("[]") @db.JsonB
+  parsedData   Json      @default("{}") @map("parsed_data") @db.JsonB
+  totalPrice   Decimal?  @map("total_price") @db.Decimal(12, 2)
+  currency     String    @default("USD") @db.VarChar(3)
+  deliveryDays Int?      @map("delivery_days")
+  paymentTerms String?   @map("payment_terms") @db.VarChar(100)
+  warrantyTerms String?  @map("warranty_terms") @db.VarChar(255)
+  aiScore      Decimal?  @map("ai_score") @db.Decimal(3, 2)
+  aiSummary    String?   @map("ai_summary") @db.Text
+  aiAnalysis   Json?     @map("ai_analysis") @db.JsonB
+  receivedAt   DateTime  @map("received_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  rfp    Rfp    @relation(fields: [rfpId], references: [id])
+  vendor Vendor @relation(fields: [vendorId], references: [id])
+  items  ProposalItem[]
+
+  @@unique([rfpId, vendorId])
+  @@map("proposals")
+}
+
+model ProposalItem {
+  id             Int      @id @default(autoincrement())
+  proposalId     Int      @map("proposal_id")
+  itemName       String   @map("item_name") @db.VarChar(255)
+  description    String?  @db.Text
+  quantity       Int
+  unitPrice      Decimal  @map("unit_price") @db.Decimal(10, 2)
+  totalPrice     Decimal  @map("total_price") @db.Decimal(12, 2)
+  specifications Json     @default("[]") @db.JsonB
+  warranty       String?  @db.VarChar(100)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  proposal Proposal @relation(fields: [proposalId], references: [id])
+
+  @@map("proposal_items")
+}
+
+enum RfpStatus {
+  draft
+  sent
+  evaluating
+  awarded
+  closed
+}
+
+enum RfpVendorStatus {
+  pending
+  sent
+  awaiting_details
+  responded
+  declined
+}
