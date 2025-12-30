@@ -91,8 +91,8 @@ An intelligent Request for Proposal (RFP) management system that streamlines the
 ### 1. Clone Repository
 
 ```bash
-git clone <repository-url>
-cd Aerchain-Assignment
+git clone https://github.com/jay-arora31/rfp-automation-suite
+cd rfp-automation-suite
 ```
 
 ### 2. Environment Configuration
