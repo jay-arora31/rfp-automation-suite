@@ -8,6 +8,7 @@ const { prisma } = require('../config/database');
 let lastPollTime = null;
 let isPolling = false;
 const processingEmails = new Set(); // Track emails currently being processed
+const processedVendorsThisCycle = new Set(); // Track vendor+RFP combos processed in current poll cycle
 
 // Maximum follow-up emails to send per vendor
 const MAX_FOLLOW_UPS = 3;
@@ -65,6 +66,11 @@ function checkMissingFields(data, rfpItems) {
         missing.push('Delivery timeline');
     }
     
+    // Check payment terms
+    if (!data.paymentTerms) {
+        missing.push('Payment terms');
+    }
+    
     // Check price for each RFP item
     const rfpItemNames = (rfpItems || []).map(i => i.name?.toLowerCase());
     
@@ -92,7 +98,7 @@ function checkMissingFields(data, rfpItems) {
  * Handles both complete and incomplete proposals
  */
 async function processVendorEmail(email) {
-    // Prevent duplicate processing within same poll cycle
+    // Prevent duplicate processing within same poll cycle (by messageId)
     const emailKey = `${email.rfpId}-${email.messageId}`;
     if (processingEmails.has(emailKey)) {
         console.log(`[Email Poller] Email ${email.messageId} already being processed, skipping`);
@@ -105,6 +111,24 @@ async function processVendorEmail(email) {
     } finally {
         processingEmails.delete(emailKey);
     }
+}
+
+/**
+ * Mark a vendor+RFP as processed in this poll cycle
+ * Prevents duplicate follow-ups when Gmail returns multiple messages from same thread
+ */
+function markVendorProcessedThisCycle(rfpId, vendorId) {
+    const key = `${rfpId}-${vendorId}`;
+    processedVendorsThisCycle.add(key);
+}
+
+function isVendorProcessedThisCycle(rfpId, vendorId) {
+    const key = `${rfpId}-${vendorId}`;
+    return processedVendorsThisCycle.has(key);
+}
+
+function clearProcessedVendorsThisCycle() {
+    processedVendorsThisCycle.clear();
 }
 
 async function _processVendorEmailInternal(email) {
@@ -128,6 +152,13 @@ async function _processVendorEmailInternal(email) {
     if (!vendor) {
         console.log(`[Email Poller] Vendor ${vendorEmail} not found, skipping`);
         return { status: 'skipped', reason: 'vendor_not_found' };
+    }
+
+    // CRITICAL: Check if this vendor+RFP combo was already processed THIS poll cycle
+    // This prevents duplicate follow-ups when Gmail returns multiple messages from same thread
+    if (isVendorProcessedThisCycle(email.rfpId, vendor.id)) {
+        console.log(`[Email Poller] Vendor ${vendor.name} already processed for RFP ${email.rfpId} this cycle, skipping duplicate`);
+        return { status: 'skipped', reason: 'vendor_already_processed_this_cycle' };
     }
 
     // Get RfpVendor record for thread info
@@ -217,6 +248,8 @@ async function _processVendorEmailInternal(email) {
             console.log(`[Email Poller] Max follow-ups (${MAX_FOLLOW_UPS}) reached for ${vendor.name}, creating partial proposal`);
             // Create proposal anyway with whatever data we have
             await proposalService.createFromEmail(email.rfpId, vendor.id, fullContent, mergedData);
+            // Mark vendor as processed this cycle
+            markVendorProcessedThisCycle(email.rfpId, vendor.id);
             return { status: 'partial_proposal', missingFields };
         }
 
@@ -249,6 +282,9 @@ async function _processVendorEmailInternal(email) {
                         lastProcessedMessageId: email.messageId,
                     },
                 });
+
+                // Mark vendor as processed this cycle to prevent duplicate follow-ups
+                markVendorProcessedThisCycle(email.rfpId, vendor.id);
 
                 console.log(`[Email Poller] Sent follow-up #${rfpVendor.followUpCount + 1} to ${vendor.name} for missing: ${missingFields.join(', ')}`);
                 return { status: 'follow_up_sent', followUpCount: rfpVendor.followUpCount + 1 };
@@ -296,6 +332,9 @@ async function _processVendorEmailInternal(email) {
         },
     });
     
+    // Mark vendor as processed this cycle
+    markVendorProcessedThisCycle(email.rfpId, vendor.id);
+    
     console.log(`[Email Poller] Created complete proposal from ${vendor.name} for RFP ${email.rfpId}`);
     return { status: 'proposal_created' };
 }
@@ -315,6 +354,8 @@ const startEmailPoller = () => {
         }
 
         isPolling = true;
+        // Clear the processed vendors set at the start of each poll cycle
+        clearProcessedVendorsThisCycle();
         console.log(`[${new Date().toISOString()}] 📧 Polling Gmail for vendor responses...`);
 
         try {
@@ -379,6 +420,8 @@ const triggerPoll = async () => {
     }
 
     isPolling = true;
+    // Clear the processed vendors set at the start of manual poll
+    clearProcessedVendorsThisCycle();
 
     try {
         const emails = await gmailService.fetchRfpResponses();

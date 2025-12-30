@@ -105,10 +105,12 @@ COMPLETENESS CHECK:
 Required fields for a COMPLETE proposal:
 1. Price for EACH item requested in the RFP (unitPrice)
 2. Delivery timeline (deliveryDays) - REQUIRED
+3. Payment terms (paymentTerms) - REQUIRED
 
 Set "isComplete": false and populate "missingFields" array if:
 - "Price for [ItemName]" - if unitPrice is missing for an RFP item
 - "Delivery timeline" - if deliveryDays is null or not mentioned
+- "Payment terms" - if paymentTerms is null or not mentioned
 
 NOTE: Do NOT mark warranty as missing if it was mentioned in the email. Only truly missing items should be in missingFields.
 

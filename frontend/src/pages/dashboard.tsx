@@ -17,15 +17,18 @@ export function Dashboard() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [rfps, active, completed, vendors] = await Promise.all([
+                // Fetch all stats including in-progress (draft + sent + evaluating)
+                const [rfps, draft, sent, evaluating, completed, vendors] = await Promise.all([
                     rfpService.getRfps({ limit: 5 }),
                     rfpService.getRfps({ status: 'draft', limit: 1 }),
+                    rfpService.getRfps({ status: 'sent', limit: 1 }),
+                    rfpService.getRfps({ status: 'evaluating', limit: 1 }),
                     rfpService.getRfps({ status: 'awarded', limit: 1 }),
                     vendorService.getVendors({ limit: 1 })
                 ])
                 setStats({
                     totalRfps: rfps.total,
-                    activeRfps: active.total,
+                    activeRfps: draft.total + sent.total + evaluating.total, // In Progress = draft + sent + evaluating
                     completedRfps: completed.total,
                     totalVendors: vendors.total
                 })

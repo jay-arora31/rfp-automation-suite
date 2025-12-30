@@ -136,13 +136,14 @@ router.get(
 
 /**
  * POST /api/rfp/:id/award
- * Award RFP to a specific vendor
+ * Award RFP to a specific vendor and send notification email
  */
 router.post(
     '/:id/award',
     async (req, res, next) => {
         try {
             const { prisma } = require('../config/database');
+            const gmailService = require('../services/gmailService');
             const { vendorId } = req.body;
             const rfpId = parseInt(req.params.id);
 
@@ -165,6 +166,11 @@ router.post(
                 return res.status(404).json({ error: 'Vendor has no proposal for this RFP' });
             }
 
+            // Get full RFP details
+            const rfp = await prisma.rfp.findUnique({
+                where: { id: rfpId },
+            });
+
             // Update RFP status and awarded vendor
             const updatedRfp = await prisma.rfp.update({
                 where: { id: rfpId },
@@ -178,9 +184,27 @@ router.post(
                 },
             });
 
+            // Send award notification email to winning vendor
+            let emailSent = false;
+            try {
+                const emailResult = await gmailService.sendAwardNotification(
+                    rfp,
+                    proposal.vendor,
+                    proposal
+                );
+                emailSent = emailResult.success;
+                if (emailResult.success) {
+                    console.log(`[Award] Sent award notification to ${proposal.vendor.email}`);
+                }
+            } catch (emailError) {
+                console.error(`[Award] Failed to send award notification:`, emailError.message);
+                // Don't fail the award if email fails
+            }
+
             res.json({
                 success: true,
                 message: `RFP awarded to ${proposal.vendor.name}`,
+                emailSent,
                 rfp: {
                     id: updatedRfp.id,
                     status: updatedRfp.status,

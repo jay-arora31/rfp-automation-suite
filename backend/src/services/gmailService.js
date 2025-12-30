@@ -547,6 +547,140 @@ const gmailService = {
     },
 
     /**
+     * Send award notification email to winning vendor
+     * @param {Object} rfp - The RFP object
+     * @param {Object} vendor - The winning vendor
+     * @param {Object} proposal - The winning proposal
+     * @returns {Promise<Object>} Result of sending
+     */
+    async sendAwardNotification(rfp, vendor, proposal) {
+        const gmail = await this.getGmailClient();
+
+        try {
+            const subject = `[RFP-${rfp.id}] Award Notification - ${rfp.title}`;
+            const body = this.generateAwardEmailBody(rfp, vendor, proposal);
+            const rawMessage = this.createMessage(vendor.email, subject, body);
+
+            const response = await gmail.users.messages.send({
+                userId: 'me',
+                requestBody: {
+                    raw: rawMessage,
+                },
+            });
+
+            console.log(`[Gmail Service] Sent award notification to ${vendor.email}`);
+
+            return {
+                success: true,
+                messageId: response.data.id,
+            };
+        } catch (error) {
+            console.error(`[Gmail Service] Failed to send award notification:`, error.message);
+            return {
+                success: false,
+                error: error.message,
+            };
+        }
+    },
+
+    /**
+     * Generate HTML email body for award notification
+     */
+    generateAwardEmailBody(rfp, vendor, proposal) {
+        const totalPrice = proposal.totalPrice ? `$${Number(proposal.totalPrice).toLocaleString()}` : 'As quoted';
+        const deliveryDays = proposal.deliveryDays ? `${proposal.deliveryDays} days` : 'As quoted';
+        const paymentTerms = proposal.paymentTerms || 'As quoted';
+
+        return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);">
+          
+          <!-- Header with Green Gradient (Award/Success) -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); padding: 40px; text-align: center;">
+              <div style="width: 60px; height: 60px; background: rgba(255,255,255,0.2); border-radius: 50%; margin: 0 auto 16px; line-height: 60px; font-size: 28px;">🏆</div>
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">Congratulations!</h1>
+              <p style="margin: 8px 0 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Your proposal has been selected</p>
+            </td>
+          </tr>
+          
+          <!-- Body -->
+          <tr>
+            <td style="padding: 40px;">
+              <p style="margin: 0 0 24px 0; color: #374151; font-size: 16px; line-height: 1.6;">
+                Dear <strong style="color: #1f2937;">${vendor.name}</strong>,
+              </p>
+              
+              <p style="margin: 0 0 28px 0; color: #374151; font-size: 16px; line-height: 1.7;">
+                We are pleased to inform you that your proposal for the following RFP has been <strong style="color: #059669;">selected and awarded</strong>:
+              </p>
+              
+              <!-- RFP Title Card -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 28px;">
+                <tr>
+                  <td style="background-color: #ecfdf5; border-left: 4px solid #059669; border-radius: 0 8px 8px 0; padding: 24px;">
+                    <p style="margin: 0 0 4px 0; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">RFP-${rfp.id}</p>
+                    <h2 style="margin: 0; color: #1f2937; font-size: 18px; font-weight: 600;">${rfp.title}</h2>
+                  </td>
+                </tr>
+              </table>
+              
+              <!-- Proposal Summary -->
+              <p style="margin: 0 0 16px 0; color: #1f2937; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Your Proposal Summary</p>
+              
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 32px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                <tr>
+                  <td style="padding: 16px 20px; background-color: #f9fafb; border-bottom: 1px solid #e5e7eb;">
+                    <span style="color: #6b7280; font-size: 13px;">Total Amount</span>
+                  </td>
+                  <td style="padding: 16px 20px; background-color: #f9fafb; border-bottom: 1px solid #e5e7eb; text-align: right;">
+                    <strong style="color: #059669; font-size: 16px;">${totalPrice}</strong>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 16px 20px; border-bottom: 1px solid #e5e7eb;">
+                    <span style="color: #6b7280; font-size: 13px;">Delivery Timeline</span>
+                  </td>
+                  <td style="padding: 16px 20px; border-bottom: 1px solid #e5e7eb; text-align: right;">
+                    <strong style="color: #1f2937; font-size: 14px;">${deliveryDays}</strong>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 16px 20px;">
+                    <span style="color: #6b7280; font-size: 13px;">Payment Terms</span>
+                  </td>
+                  <td style="padding: 16px 20px; text-align: right;">
+                    <strong style="color: #1f2937; font-size: 14px;">${paymentTerms}</strong>
+                  </td>
+                </tr>
+              </table>
+              
+              <p style="margin: 0; color: #374151; font-size: 16px; line-height: 1.6;">
+                Thank you for your participation in this procurement process.
+              </p>
+            </td>
+          </tr>
+          
+          
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+        `;
+    },
+
+    /**
      * Fetch unread emails matching RFP pattern
      * Called by email poller
      */

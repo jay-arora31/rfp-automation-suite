@@ -162,7 +162,7 @@ const pdfGenerator = {
                 y += 15;
 
                 const terms = [];
-                if (rfp.budget) terms.push(['Budget', `$${Number(rfp.budget).toLocaleString()} ${rfp.currency || 'USD'}`]);
+                // Note: Budget is intentionally NOT sent to vendors for competitive pricing
                 if (rfp.deliveryDays) terms.push(['Delivery', `${rfp.deliveryDays} days`]);
                 if (rfp.paymentTerms) terms.push(['Payment', rfp.paymentTerms]);
                 if (rfp.warrantyTerms) terms.push(['Warranty', rfp.warrantyTerms]);
