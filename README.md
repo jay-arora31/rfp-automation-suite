@@ -124,7 +124,7 @@ FRONTEND_URL="http://localhost:5173"
 **Frontend (`frontend/.env`):**
 
 ```env
-VITE_API_URL=http://localhost:3000/api
+VITE_API_URL=http://localhost:3000
 ```
 
 ### 3. Google Cloud Setup (Gmail Integration)
