@@ -685,29 +685,6 @@ All endpoints may return:
 | **Debugging** | Email threading issues, PDF generation, attachment parsing |
 | **Refactoring** | Component modularization, CSS modules conversion |
 
-### Notable Approaches
-
-1. **Structured Output Prompts**: Designed prompts that return JSON for reliable parsing:
-```
-Extract the following from vendor email:
-- items: array of { name, quantity, unitPrice, warranty }
-- deliveryDays: number
-- paymentTerms: string
-Return as JSON only.
-```
-
-2. **Multi-turn Conversation**: Chat system maintains context across messages for natural RFP creation.
-
-3. **Confidence Scoring**: Comparison includes confidence levels to help users trust recommendations.
-
-### Learnings
-
-1. **Prompt Engineering**: Clear, structured prompts with examples produce more reliable outputs.
-
-2. **Error Handling**: AI can return unexpected formats; robust parsing with fallbacks is essential.
-
-3. **User Experience**: Showing AI reasoning (not just results) builds trust.
-
 ---
 
 ## 📁 Project Structure
@@ -753,21 +730,4 @@ Return as JSON only.
 2. **No Real-time Updates**: Email responses require polling (1 min interval)
 3. **Attachment Size**: Large attachments may timeout during parsing
 4. **No Edit RFP**: Once created, RFPs cannot be edited (by design for audit trail)
-
----
-
-## 🔮 Future Improvements
-
-- [ ] Real-time notifications via WebSocket
-- [ ] Multi-user support with authentication
-- [ ] RFP templates for common procurement types
-- [ ] Vendor performance tracking over time
-- [ ] Export comparison reports to PDF
-- [ ] Support for multiple email providers
-
----
-
-## 📄 License
-
-MIT License - feel free to use this project as a reference.
 
