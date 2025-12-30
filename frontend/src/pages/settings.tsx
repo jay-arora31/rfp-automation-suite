@@ -1,41 +1,40 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { authService } from '@/services/authService'
-import type { GmailStatus } from '@/types/auth'
-import { Mail, CheckCircle2, XCircle, Loader2, AlertCircle } from 'lucide-react'
+import { useGmailAuth } from '@/contexts/GmailAuthContext'
+import { Mail, CheckCircle2, XCircle, Loader2, AlertCircle, AlertTriangle } from 'lucide-react'
 import styles from '@/styles/settings.module.css'
 
 export function Settings() {
+    const navigate = useNavigate()
     const [searchParams, setSearchParams] = useSearchParams()
-    const [gmailStatus, setGmailStatus] = useState<GmailStatus | null>(null)
-    const [loading, setLoading] = useState(true)
+    const { isConnected, email, isLoading, checkConnection } = useGmailAuth()
     const [disconnecting, setDisconnecting] = useState(false)
     const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
-
-    // Fetch Gmail status on mount
-    useEffect(() => {
-        fetchGmailStatus()
-    }, [])
 
     // Handle OAuth callback query params
     useEffect(() => {
         const gmailParam = searchParams.get('gmail')
-        const email = searchParams.get('email')
+        const emailParam = searchParams.get('email')
         const errorMessage = searchParams.get('message')
 
-        if (gmailParam === 'connected' && email) {
-            setNotification({ type: 'success', message: `Gmail connected: ${email}` })
+        if (gmailParam === 'connected' && emailParam) {
+            setNotification({ type: 'success', message: `Gmail connected: ${emailParam}` })
             // Clear URL params
             setSearchParams({})
             // Refresh status
-            fetchGmailStatus()
+            checkConnection()
+            // Redirect to dashboard after successful connection
+            setTimeout(() => {
+                navigate('/')
+            }, 1500)
         } else if (gmailParam === 'error') {
             setNotification({ type: 'error', message: errorMessage || 'Failed to connect Gmail' })
             setSearchParams({})
         }
-    }, [searchParams, setSearchParams])
+    }, [searchParams, setSearchParams, checkConnection, navigate])
 
     // Auto-hide notification
     useEffect(() => {
@@ -44,19 +43,6 @@ export function Settings() {
             return () => clearTimeout(timer)
         }
     }, [notification])
-
-    const fetchGmailStatus = async () => {
-        try {
-            setLoading(true)
-            const status = await authService.getGmailStatus()
-            setGmailStatus(status)
-        } catch (error) {
-            console.error('Failed to fetch Gmail status:', error)
-            setGmailStatus({ connected: false })
-        } finally {
-            setLoading(false)
-        }
-    }
 
     const handleConnect = () => {
         authService.connectGmail()
@@ -68,7 +54,7 @@ export function Settings() {
         try {
             setDisconnecting(true)
             await authService.disconnectGmail()
-            setGmailStatus({ connected: false })
+            await checkConnection()
             setNotification({ type: 'success', message: 'Gmail disconnected successfully' })
         } catch (error) {
             console.error('Failed to disconnect Gmail:', error)
@@ -84,6 +70,36 @@ export function Settings() {
                 <h1 className={styles.title}>Settings</h1>
                 <p className={styles.description}>Manage your account preferences and integrations.</p>
             </div>
+
+            {/* Connection Required Banner - Show only when not connected */}
+            {!isLoading && !isConnected && (
+                <div className="mb-6 p-6 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl">
+                    <div className="flex items-start gap-4">
+                        <div className="p-3 bg-amber-100 rounded-lg">
+                            <AlertTriangle className="h-6 w-6 text-amber-600" />
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-amber-900 mb-1">
+                                Gmail Connection Required
+                            </h3>
+                            <p className="text-amber-700 mb-4">
+                                To use the RFP Management System, you need to connect your Gmail account first. 
+                                This allows the system to send RFPs to vendors and receive their proposals automatically.
+                            </p>
+                            <div className="flex items-center gap-3 text-sm text-amber-600">
+                                <CheckCircle2 className="h-4 w-4" />
+                                <span>Send RFPs via email</span>
+                                <span className="text-amber-400">•</span>
+                                <CheckCircle2 className="h-4 w-4" />
+                                <span>Receive vendor proposals</span>
+                                <span className="text-amber-400">•</span>
+                                <CheckCircle2 className="h-4 w-4" />
+                                <span>Automated follow-ups</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Notification Toast */}
             {notification && (
@@ -114,18 +130,18 @@ export function Settings() {
                 </CardHeader>
                 <CardContent>
                     <div className={styles.gmailStatusSection}>
-                        {loading ? (
+                        {isLoading ? (
                             <div className={styles.statusLoading}>
                                 <Loader2 className={styles.spinner} />
                                 <span>Checking connection status...</span>
                             </div>
-                        ) : gmailStatus?.connected ? (
+                        ) : isConnected ? (
                             <div className={styles.statusConnected}>
                                 <div className={styles.statusInfo}>
                                     <CheckCircle2 className={`${styles.statusIcon} ${styles.connected}`} />
                                     <div>
                                         <p className={styles.statusLabel}>Connected</p>
-                                        <p className={styles.statusEmail}>{gmailStatus.email}</p>
+                                        <p className={styles.statusEmail}>{email}</p>
                                     </div>
                                 </div>
                                 <Button

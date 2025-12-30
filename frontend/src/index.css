@@ -52,7 +52,6 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  /* Vyaakhya Purple Theme - #7c3aed */
   --primary: oklch(0.541 0.281 293.009);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0.01 293);
@@ -87,7 +86,6 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  /* Vyaakhya Purple Theme for Dark Mode */
   --primary: oklch(0.627 0.265 293.9);
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.269 0.02 293);
@@ -126,7 +124,7 @@
 }
 
 /* ======================== */
-/* Vyaakhya Design Theme   */
+/*  Design Theme   */
 /* ======================== */
 
 /* Gradient text utility */

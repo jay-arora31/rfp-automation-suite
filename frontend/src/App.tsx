@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/layout/app-sidebar'
+import { GmailAuthProvider } from '@/contexts/GmailAuthContext'
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { Dashboard } from '@/pages/dashboard'
 import { ChatRFP } from '@/pages/chat-rfp'
 import { Vendors } from '@/pages/vendors'
@@ -43,27 +45,50 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<AppLayout><Dashboard /></AppLayout>} />
-        <Route path="/chat" element={<AppLayout><ChatRFP /></AppLayout>} />
-        <Route path="/vendors" element={<AppLayout><Vendors /></AppLayout>} />
-        <Route path="/rfps" element={<AppLayout><Rfps /></AppLayout>} />
-        <Route path="/rfps/:id" element={<AppLayout><RfpDetail /></AppLayout>} />
-        <Route path="/email" element={<AppLayout><PlaceholderPage title="Email Polling" /></AppLayout>} />
-        <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
-      </Routes>
+      <GmailAuthProvider>
+        <Routes>
+          {/* Protected Routes - require Gmail connection */}
+          <Route path="/" element={
+            <AppLayout>
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            </AppLayout>
+          } />
+          <Route path="/chat" element={
+            <AppLayout>
+              <ProtectedRoute>
+                <ChatRFP />
+              </ProtectedRoute>
+            </AppLayout>
+          } />
+          <Route path="/vendors" element={
+            <AppLayout>
+              <ProtectedRoute>
+                <Vendors />
+              </ProtectedRoute>
+            </AppLayout>
+          } />
+          <Route path="/rfps" element={
+            <AppLayout>
+              <ProtectedRoute>
+                <Rfps />
+              </ProtectedRoute>
+            </AppLayout>
+          } />
+          <Route path="/rfps/:id" element={
+            <AppLayout>
+              <ProtectedRoute>
+                <RfpDetail />
+              </ProtectedRoute>
+            </AppLayout>
+          } />
+          
+          {/* Settings - accessible without Gmail connection */}
+          <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
+        </Routes>
+      </GmailAuthProvider>
     </BrowserRouter>
-  )
-}
-
-function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <div className="flex items-center justify-center h-[calc(100vh-10rem)]">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold">{title}</h2>
-        <p className="text-muted-foreground mt-2">Coming soon...</p>
-      </div>
-    </div>
   )
 }
 

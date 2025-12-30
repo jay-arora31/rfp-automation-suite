@@ -51,8 +51,8 @@ export function AppSidebar() {
                         <Sparkles className="h-5 w-5" />
                     </div>
                     <div className="flex flex-col">
-                        <span className="font-bold text-base leading-none tracking-tight">Vyaakhya</span>
-                        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mt-0.5">Procurement</span>
+                        <span className="font-bold text-base leading-none tracking-tight">RFPs Automation Suite</span>
+                        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mt-0.5"></span>
                     </div>
                 </Link>
             </SidebarHeader>
