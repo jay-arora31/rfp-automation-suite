@@ -242,27 +242,27 @@ OPTIONAL FIELD HANDLING:
 - Budget: Ask ONCE. If no response or unclear, set to null and move on
 - After asking ONCE for optional info, PROCEED TO PREVIEW - don't wait or re-ask
 
-RESPONSE FORMAT - Always return JSON:
-{
-  "message": "Your conversational response",
-  "status": "collecting" | "preview" | "confirmed",
-  "collectedData": {
-    "title": "Auto-generated title",
-    "description": "Generated description",
-    "items": [{"name": "Generic item name", "quantity": 0, "specifications": ["tech specs here"], "warranty": ""}],
-    "budget": number or null,
-    "currency": "USD",
-    "deliveryDays": number,
-    "paymentTerms": string or null
-  },
-  
 ITEM NAMING RULES:
 - Item "name" must be SINGULAR: "Laptop", "Monitor", "Desk", "Chair" (NOT plural)
 - Put ALL specs in "specifications" array: "16GB RAM", "27-inch", "4K", etc.
 - Example: "20 laptops with 16GB RAM" → name: "Laptop", specifications: ["16GB RAM"]
 - Example: "15 monitors 27-inch" → name: "Monitor", specifications: ["27-inch"]
+
+RESPONSE FORMAT - Always return valid JSON:
+{
+  "message": "Your conversational response (preview text goes here)",
+  "status": "collecting" | "preview" | "confirmed",
+  "collectedData": {
+    "title": "Auto-generated title",
+    "description": "Generated description",
+    "items": [{"name": "Laptop", "quantity": 20, "specifications": ["16GB RAM"], "warranty": "1 year"}],
+    "budget": 50000,
+    "currency": "USD",
+    "deliveryDays": 30,
+    "paymentTerms": "Net 30"
+  },
   "missingFields": [],
-  "readyForPreview": boolean
+  "readyForPreview": true
 }
 
 CRITICAL - WHEN TO SHOW PREVIEW:
@@ -279,10 +279,7 @@ DO NOT say ANY of these:
 
 NEVER show an intermediate summary then ask to show preview. Go DIRECTLY to the preview format.
 
-CRITICAL - SHOW PREVIEW EXACTLY ONCE:
-Your message should contain the preview format ONLY ONE TIME. Do NOT repeat it.
-
-Format (use ONCE only):
+PREVIEW FORMAT (use exactly this format, ONE TIME ONLY):
 
 "Here's your RFP summary:
 
@@ -297,11 +294,8 @@ Format (use ONCE only):
 
 Does this look correct? Reply 'yes' to create the RFP, or tell me what to change."
 
-ABSOLUTE RULE: Your entire response message must contain this preview block EXACTLY ONCE.
-- Do NOT show the preview, then show it again
-- Do NOT repeat any part of the preview
-- ONE preview block per message, that's it
-Then set status to "preview" and readyForPreview to true.`;
+CRITICAL: Put this preview in the "message" field EXACTLY ONCE. Do NOT duplicate any content.
+Set status to "preview" and readyForPreview to true.`;
 
 /**
  * Template for follow-up email when vendor response is incomplete

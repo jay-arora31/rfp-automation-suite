@@ -11,8 +11,10 @@ const chatService = require('../services/chatService');
  * Response: { message, status, collectedData, missingFields, readyForPreview, rfp? }
  */
 router.post('/rfp', async (req, res, next) => {
+    console.log(`[Chat Route] POST /api/chat/rfp called at ${new Date().toISOString()}`);
     try {
         const { messages } = req.body;
+        console.log(`[Chat Route] Received ${messages?.length || 0} messages`);
 
         if (!messages || !Array.isArray(messages) || messages.length === 0) {
             return res.status(400).json({
@@ -23,6 +25,7 @@ router.post('/rfp', async (req, res, next) => {
 
         // Process the conversation
         const response = await chatService.processMessage(messages);
+        console.log(`[Chat Route] Response status: ${response.status}`);
 
         // If confirmed, create the RFP
         if (response.status === 'confirmed' && response.collectedData) {

@@ -24,6 +24,7 @@ export function ChatRFP() {
     const [createdRfp, setCreatedRfp] = useState<CreatedRfp | null>(null)
     const [error, setError] = useState<string | null>(null)
     const messagesEndRef = useRef<HTMLDivElement>(null)
+    const isProcessingRef = useRef(false) // Prevent double API calls in StrictMode
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -35,14 +36,16 @@ export function ChatRFP() {
 
     // Handle initial message from dashboard
     useEffect(() => {
-        if (state?.initialMessage && messages.length === 0) {
+        if (state?.initialMessage && messages.length === 0 && !isProcessingRef.current) {
             handleSendMessage(state.initialMessage)
             window.history.replaceState({}, document.title)
         }
     }, [state?.initialMessage])
 
     const handleSendMessage = async (messageText: string) => {
-        if (!messageText.trim() || isLoading) return
+        // Use ref to prevent duplicate calls from React StrictMode
+        if (!messageText.trim() || isLoading || isProcessingRef.current) return
+        isProcessingRef.current = true
 
         const userMessage: ChatMessage = { role: 'user', content: messageText.trim() }
         const updatedMessages = [...messages, userMessage]
@@ -70,6 +73,7 @@ export function ChatRFP() {
             setMessages(prev => [...prev, errorMessage])
         } finally {
             setIsLoading(false)
+            isProcessingRef.current = false // Reset ref after request completes
         }
     }
 

@@ -53,9 +53,21 @@ const chatService = {
                 throw new Error('Failed to parse AI response');
             }
 
+            // Clean up duplicate preview content (safety net)
+            let cleanedMessage = parsed.message || "I'm sorry, I couldn't process that. Could you try again?";
+            
+            // Debug: Log if preview marker appears multiple times
+            const previewCount = (cleanedMessage.match(/Here's your RFP summary:/g) || []).length;
+            if (previewCount > 1) {
+                console.log(`[Chat Service] WARNING: AI generated ${previewCount} preview blocks!`);
+                console.log('[Chat Service] Raw AI message:', cleanedMessage.substring(0, 500) + '...');
+            }
+            
+            cleanedMessage = this.removeDuplicatePreview(cleanedMessage);
+
             // Ensure required fields exist
             return {
-                message: parsed.message || "I'm sorry, I couldn't process that. Could you try again?",
+                message: cleanedMessage,
                 status: parsed.status || 'collecting',
                 collectedData: parsed.collectedData || {},
                 missingFields: parsed.missingFields || [],
@@ -93,6 +105,43 @@ const chatService = {
         });
 
         return rfp;
+    },
+
+    /**
+     * Remove duplicate preview blocks from AI response (safety net)
+     * AI sometimes generates the preview twice - this removes the duplicate
+     */
+    removeDuplicatePreview(message) {
+        if (!message) return message;
+
+        const previewMarker = "Here's your RFP summary:";
+        const firstIndex = message.indexOf(previewMarker);
+        const lastIndex = message.lastIndexOf(previewMarker);
+
+        // If marker appears more than once, keep only the first complete block
+        if (firstIndex !== -1 && lastIndex !== -1 && firstIndex !== lastIndex) {
+            console.log('[Chat Service] Cleaning duplicate preview...');
+            
+            // Find where "Does this look correct?" appears after first preview
+            const endMarker = "Does this look correct?";
+            const endIndex = message.indexOf(endMarker, firstIndex);
+            
+            if (endIndex !== -1) {
+                // Find end of the confirmation question line
+                const lineEnd = message.indexOf('\n', endIndex);
+                if (lineEnd !== -1) {
+                    // Keep everything up to end of "Does this look correct?..." line
+                    return message.substring(0, lineEnd).trim();
+                }
+                // No newline after? Keep up to second marker
+                return message.substring(0, lastIndex).trim();
+            }
+            
+            // No end marker found, just cut at second preview
+            return message.substring(0, lastIndex).trim();
+        }
+
+        return message;
     },
 
     /**
